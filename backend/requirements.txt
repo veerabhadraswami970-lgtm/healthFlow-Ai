@@ -1,0 +1,49 @@
+# --- Core backend ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+
+# --- Database: MongoDB ---
+motor==3.6.0                # async MongoDB driver (use with FastAPI's async routes)
+pymongo==4.9.2               # motor's sync counterpart / used by some tooling
+beanie==1.27.0                # optional: ODM on top of motor if you want schema-style models
+
+# --- Auth ---
+# Firebase Authentication kept for identity/RBAC (per your architecture doc);
+# only the *database* is MongoDB now, auth can stay on Firebase or move to
+# a JWT-based scheme — remove firebase-admin below if you go pure-JWT.
+firebase-admin==6.5.0
+python-jose[cryptography]==3.3.0   # JWT signing/verification
+bcrypt==4.2.0                       # password hashing (used directly, not via passlib)
+email-validator==2.2.0              # required by pydantic's EmailStr
+
+# --- File storage ---
+# Pick ONE depending on where prescriptions/images/reports are stored:
+# - firebase-admin (already listed above) -> Firebase Storage
+# - OR uncomment below for S3 / S3-compatible (e.g. MinIO, Cloudflare R2)
+# boto3==1.35.36
+
+# --- AI / LLM (Gemini, as noted in your tech stack) ---
+google-generativeai==0.8.2
+
+# --- OCR (Prescription Reader agent) ---
+pytesseract==0.3.13
+pillow==10.4.0
+
+# --- Cache / background jobs ---
+redis==5.0.8
+celery==5.4.0
+apscheduler==3.10.4
+
+# --- HTTP client (maps, external services) ---
+httpx==0.27.2
+
+# --- Testing ---
+pytest==8.3.3
+pytest-asyncio==0.24.0
+mongomock-motor==0.0.34     # in-memory MongoDB mock for unit tests
+
+# --- Observability ---
+python-json-logger==2.0.7
