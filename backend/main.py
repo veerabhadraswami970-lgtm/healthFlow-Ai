@@ -1,4 +1,4 @@
-﻿"""
+"""
 main.py
 -------
 Entry point that wires all HealthFlow AI routes into one FastAPI app.
@@ -27,9 +27,16 @@ app = FastAPI(
     description="Backend API for HealthFlow AI's core routes and seven agents.",
     version="1.0.0",
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 @app.get("/health")
 async def health_check():
-    """Quick liveness check — hit this first to confirm the server is up."""
+    """Quick liveness check Ã¢â‚¬â€ hit this first to confirm the server is up."""
     return {"status": "ok", "service": "HealthFlow AI backend"}
 # Core domain routes
 users_router, get_current_user, require_role = build_users_router()
@@ -49,3 +56,6 @@ app.include_router(build_recommendation_router(), prefix="/api/v1")
 app.include_router(build_assistant_router(), prefix="/api/v1")
 app.include_router(build_voice_router(), prefix="/api/v1")
 app.include_router(build_analytics_router(), prefix="/api/v1")
+
+
+
