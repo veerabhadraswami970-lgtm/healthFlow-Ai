@@ -9,13 +9,13 @@ Design intent (per project architecture doc):
   platform.
 - Same "never invent a value" principle as the Prescription OCR agent:
   a low-confidence transcription is NOT silently passed on as if it were
-  understood — the user is asked to confirm or repeat instead.
+  understood â€” the user is asked to confirm or repeat instead.
 - Audio input is validated deterministically (format, size, duration)
-  BEFORE any paid STT call is made — cost control and abuse prevention,
+  BEFORE any paid STT call is made â€” cost control and abuse prevention,
   not a model decision.
 - Once transcribed, the text is handed to the existing Health Assistant
   Agent (module 01) so emergency detection and conversation handling are
-  not duplicated — this agent only adds the audio layer on top.
+  not duplicated â€” this agent only adds the audio layer on top.
 - Voice provider is pluggable (Whisper-style API, Google Speech, etc.)
   behind one interface, same as OCR/LLM providers in the other agents.
 
@@ -24,7 +24,7 @@ Layering:
       -> VoiceAssistantService (orchestration)
           -> AudioValidator (pure, deterministic, checked before any provider call)
           -> VoiceProvider (STT + TTS, pluggable)
-          -> HealthAssistantService (reused from health_assistant.py — no duplicated logic)
+          -> HealthAssistantService (reused from health_assistant.py â€” no duplicated logic)
           -> VoiceInteractionRepository (Mongo, audit log of voice turns)
 """
 
@@ -73,7 +73,7 @@ class AudioFormat(str, Enum):
     WEBM = "webm"
 
 
-# Deterministic, tunable limits — not model decisions.
+# Deterministic, tunable limits â€” not model decisions.
 MAX_AUDIO_BYTES = 10 * 1024 * 1024        # 10 MB
 MAX_AUDIO_DURATION_SECONDS = 120           # 2 minutes per turn
 MIN_TRANSCRIPTION_CONFIDENCE = 0.55        # below this, ask the user to repeat
@@ -100,7 +100,7 @@ class TranscriptionResult(BaseModel):
 
 
 class VoiceInteraction(BaseModel):
-    """Mirrors a `voice_interactions` MongoDB collection — audit trail."""
+    """Mirrors a `voice_interactions` MongoDB collection â€” audit trail."""
 
     id: str = Field(default_factory=lambda: str(uuid4()))
     user_id: str
@@ -193,7 +193,7 @@ class VoiceProvider(ABC):
 class WhisperVoiceProvider(VoiceProvider):
     """
     Example hosted-API provider (OpenAI Whisper-compatible endpoint, or any
-    similar STT/TTS API). Kept as a thin adapter — swap for Google Speech,
+    similar STT/TTS API). Kept as a thin adapter â€” swap for Google Speech,
     Azure, etc. without touching the service layer.
     """
 
@@ -298,7 +298,7 @@ class VoiceAssistantService:
         # 2. Speech-to-text.
         transcription = await self._voice.transcribe(audio_storage_ref, req.language_hint)
 
-        # 3. Never act on a low-confidence or empty transcript — ask the
+        # 3. Never act on a low-confidence or empty transcript â€” ask the
         #    user to repeat instead of guessing what they meant.
         if not transcription.text or transcription.is_low_confidence:
             reply = VoiceReply(
@@ -322,7 +322,7 @@ class VoiceAssistantService:
             )
             return reply
 
-        # 4. Hand off to the existing Health Assistant Agent — this is
+        # 4. Hand off to the existing Health Assistant Agent â€” this is
         #    where emergency detection and conversational logic live;
         #    nothing is duplicated here.
         assistant_reply = await self._assistant.send_message(

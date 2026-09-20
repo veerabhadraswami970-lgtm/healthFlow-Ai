@@ -3,19 +3,19 @@ doctors.py
 ----------
 Core domain route: Doctors.
 
-Depends on users.py for identity — a doctor profile is always linked to
+Depends on users.py for identity â€” a doctor profile is always linked to
 a UserRole.DOCTOR account, and admin-only actions (verification) reuse
 the `require_role` dependency built there rather than duplicating auth
 logic.
 
 This is the data layer the Recommendation Agent's CandidateRepository
-(recommendation_agent.py) reads from in production — that agent ranks
+(recommendation_agent.py) reads from in production â€” that agent ranks
 what this route stores.
 
 Design:
 - A doctor can only create/edit THEIR OWN profile (enforced via the
   authenticated user's id, not a client-supplied doctor_id).
-- Verification is a separate, admin-only action — a doctor cannot
+- Verification is a separate, admin-only action â€” a doctor cannot
   self-verify. This mirrors the doc's "Admin verifies doctors and
   hospitals" principle.
 - Availability slots are a separate collection (`doctor_availability`,
@@ -106,7 +106,7 @@ class DoctorProfile(BaseModel):
 
 
 class AvailabilitySlotCreate(BaseModel):
-    date: str  # ISO date, e.g. "2026-09-05" — kept as string to avoid timezone ambiguity
+    date: str  # ISO date, e.g. "2026-09-05" â€” kept as string to avoid timezone ambiguity
     start_time: str  # "09:00"
     end_time: str  # "09:30"
 
@@ -349,7 +349,7 @@ class DoctorService:
         return await self._doctors.update(profile)
 
     async def set_verified(self, doctor_id: str, is_verified: bool) -> DoctorProfile:
-        """Admin-only action — the router enforces the role, not this method."""
+        """Admin-only action â€” the router enforces the role, not this method."""
         profile = await self._doctors.get(doctor_id)
         if profile is None:
             raise DoctorServiceError("Doctor profile not found.")
@@ -387,7 +387,7 @@ def build_router(get_current_user, require_role):
     router = APIRouter(prefix="/doctors", tags=["doctors"])
 
     # Module-level singletons so data persists across requests during
-    # local/dev runs — swap for Mongo repositories in production.
+    # local/dev runs â€” swap for Mongo repositories in production.
     _doctor_repo = InMemoryDoctorRepository()
     _availability_repo = InMemoryAvailabilityRepository()
 
@@ -479,3 +479,4 @@ def build_router(get_current_user, require_role):
         return profile.user_id if profile else None
 
     return router
+

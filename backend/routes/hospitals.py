@@ -7,9 +7,9 @@ listings. Follows the exact same pattern as doctors.py:
     models (Pydantic) -> Repository (ABC) -> InMemoryRepository
         -> Service (business logic + ownership checks) -> build_router()
 
-In-memory only — no MongoDB, no Firebase, per project decision.
+In-memory only â€” no MongoDB, no Firebase, per project decision.
 build_router(get_current_user, require_role) returns JUST the router
-(not a tuple) — matches every module except users.py.
+(not a tuple) â€” matches every module except users.py.
 """
 
 from __future__ import annotations
@@ -301,3 +301,4 @@ def build_router(get_current_user, require_role):
         return await service.list_services(hospital_id)
 
     return router
+
