@@ -366,26 +366,20 @@ class VoiceAssistantService:
 # FastAPI router (mount under /api/v1)
 # --------------------------------------------------------------------------
 
+from backend.agents.health_assistant import _assistant_service as _health_assistant_service
+
+_voice_provider = MockVoiceProvider()
+_voice_repository = InMemoryVoiceInteractionRepository()
+_voice_service = VoiceAssistantService(_voice_provider, _health_assistant_service, _voice_repository)
+
+
 def build_router():
     from fastapi import APIRouter, Depends, HTTPException
-
-    from backend.agents.health_assistant import (
-        HealthAssistantLLM,
-        InMemoryConversationRepository,
-    )
 
     router = APIRouter(prefix="/voice", tags=["voice"])
 
     def get_voice_service() -> VoiceAssistantService:
-        # Wire real dependencies in your app's dependency module, e.g.
-        # a real STT/TTS provider + MongoConversationRepository +
-        # MongoVoiceInteractionRepository built from app.state.mongo_db.
-        voice_provider = MockVoiceProvider()
-        health_assistant = HealthAssistantService(
-            InMemoryConversationRepository(), HealthAssistantLLM(llm_client=None)
-        )
-        repository = InMemoryVoiceInteractionRepository()
-        return VoiceAssistantService(voice_provider, health_assistant, repository)
+        return _voice_service
 
     @router.post("/message", response_model=VoiceReply)
     async def send_voice_message(

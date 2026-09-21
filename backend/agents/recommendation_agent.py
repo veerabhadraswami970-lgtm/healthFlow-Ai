@@ -404,18 +404,18 @@ class RecommendationService:
 # FastAPI router (mount under /api/v1)
 # --------------------------------------------------------------------------
 
+_repository = InMemoryCandidateRepository()
+_agent = RecommendationExplanationAgent(llm_client=None)
+_recommendation_service = RecommendationService(_repository, _agent)
+
+
 def build_router():
     from fastapi import APIRouter, Depends
 
     router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
     def get_recommendation_service() -> RecommendationService:
-        # Wire real dependencies in your app's dependency module, e.g.
-        # MongoCandidateRepository(app.state.mongo_db) + GeminiClient
-        # built from settings.
-        repository = InMemoryCandidateRepository()
-        agent = RecommendationExplanationAgent(llm_client=None)
-        return RecommendationService(repository, agent)
+        return _recommendation_service
 
     @router.post("/", response_model=list[ScoredCandidate])
     async def get_recommendations(
