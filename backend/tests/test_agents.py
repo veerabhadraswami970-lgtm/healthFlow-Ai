@@ -811,7 +811,15 @@ class TestAnalyticsAgent:
         assert agent._numbers_are_grounded(text, snapshot) is False
 
     def test_router_builds_with_expected_routes(self):
-        router = build_analytics_router()
+        async def dummy_get_current_user():
+            pass
+
+        def dummy_require_role(*roles):
+            async def _dep():
+                pass
+            return _dep
+
+        router = build_analytics_router(dummy_get_current_user, dummy_require_role)
         paths = {r.path for r in router.routes}
         assert "/analytics/events" in paths
         assert "/analytics/metrics" in paths

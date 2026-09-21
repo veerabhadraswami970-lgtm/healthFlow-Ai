@@ -338,18 +338,18 @@ class MedicineService:
 # FastAPI router (mount under /api/v1)
 # --------------------------------------------------------------------------
 
+_repository = InMemoryMedicineRepository()
+_agent = MedicineExplanationAgent(llm_client=None)
+_medicine_service = MedicineService(_repository, _agent)
+
+
 def build_router():
     from fastapi import APIRouter, Depends, HTTPException
 
     router = APIRouter(prefix="/medicines", tags=["medicines"])
 
     def get_medicine_service() -> MedicineService:
-        # Wire real dependencies in your app's dependency module, e.g.
-        # MongoMedicineRepository(app.state.mongo_db) + GeminiClient
-        # built from settings.
-        repository = InMemoryMedicineRepository()
-        agent = MedicineExplanationAgent(llm_client=None)
-        return MedicineService(repository, agent)
+        return _medicine_service
 
     @router.get("/search", response_model=list[MedicineReference])
     async def search_medicines(

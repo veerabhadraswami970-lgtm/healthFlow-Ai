@@ -327,6 +327,11 @@ class SchemeService:
 # FastAPI router (mount under /api/v1)
 # --------------------------------------------------------------------------
 
+_repository = InMemorySchemeRepository()
+_agent = SchemeIntelligenceAgent(llm_client=None)
+_scheme_service = SchemeService(repository=_repository, agent=_agent)
+
+
 def build_router():
     """
     Factory instead of a module-level router so dependencies (repository,
@@ -338,11 +343,7 @@ def build_router():
     router = APIRouter(prefix="/schemes", tags=["schemes"])
 
     def get_scheme_service() -> SchemeService:
-        # Wire real dependencies here in your app's dependency module,
-        # e.g. Firestore client + GeminiClient built from settings.
-        repository = InMemorySchemeRepository()
-        agent = SchemeIntelligenceAgent(llm_client=None)
-        return SchemeService(repository=repository, agent=agent)
+        return _scheme_service
 
     @router.get("/", response_model=list[Scheme])
     async def list_schemes(

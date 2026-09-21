@@ -1,4 +1,4 @@
-"""
+﻿"""
 main.py
 -------
 Entry point that wires all HealthFlow AI routes into one FastAPI app.
@@ -48,4 +48,4 @@ app.include_router(build_medicine_router(), prefix="/api/v1")
 app.include_router(build_recommendation_router(), prefix="/api/v1")
 app.include_router(build_assistant_router(), prefix="/api/v1")
 app.include_router(build_voice_router(), prefix="/api/v1")
-app.include_router(build_analytics_router(), prefix="/api/v1")
+app.include_router(build_analytics_router(get_current_user, require_role), prefix="/api/v1")

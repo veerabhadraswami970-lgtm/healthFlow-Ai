@@ -435,19 +435,19 @@ class PrescriptionService:
 # FastAPI router (mount under /api/v1)
 # --------------------------------------------------------------------------
 
+_repository = InMemoryPrescriptionRepository()
+_ocr_provider = MockOCRProvider()
+_agent = PrescriptionExtractionAgent(llm_client=None)
+_prescription_service = PrescriptionService(_repository, _ocr_provider, _agent)
+
+
 def build_router():
     from fastapi import APIRouter, Depends, HTTPException
 
     router = APIRouter(prefix="/prescriptions", tags=["prescriptions"])
 
     def get_prescription_service() -> PrescriptionService:
-        # Wire real dependencies in your app's dependency module, e.g.
-        # MongoPrescriptionRepository(app.state.mongo_db) + a real OCR
-        # provider + GeminiClient built from settings.
-        repository = InMemoryPrescriptionRepository()
-        ocr_provider = MockOCRProvider()
-        agent = PrescriptionExtractionAgent(llm_client=None)
-        return PrescriptionService(repository, ocr_provider, agent)
+        return _prescription_service
 
     @router.post("/scan", response_model=PrescriptionRecord)
     async def scan_prescription(

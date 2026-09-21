@@ -1,4 +1,4 @@
-"""
+﻿"""
 health_assistant.py
 --------------------
 Module 01: AI Health Assistant Agent.
@@ -417,6 +417,21 @@ class HealthAssistantService:
 
 
 # --------------------------------------------------------------------------
+# Module-level singletons
+# --------------------------------------------------------------------------
+# NOTE: created ONCE, at import time, and shared across every request.
+# Previously each request built its own throwaway repository/LLM/service
+# via the FastAPI Depends() function below, so conversation history never
+# actually persisted between messages in the same conversation_id (every
+# message effectively started a brand-new, memoryless conversation). Swap
+# these two lines out for Mongo-backed equivalents when a real database is
+# wired in.
+_repository: ConversationRepository = InMemoryConversationRepository()
+_llm = HealthAssistantLLM(llm_client=None)
+_assistant_service = HealthAssistantService(_repository, _llm)
+
+
+# --------------------------------------------------------------------------
 # FastAPI router (mount under /api/v1)
 # --------------------------------------------------------------------------
 
@@ -426,12 +441,7 @@ def build_router():
     router = APIRouter(prefix="/assistant", tags=["assistant"])
 
     def get_assistant_service() -> HealthAssistantService:
-        # Wire real dependencies in your app's dependency module, e.g.
-        # MongoConversationRepository(app.state.mongo_db) + a
-        # HealthAssistantLLM built with GeminiClient from settings.
-        repository = InMemoryConversationRepository()
-        llm = HealthAssistantLLM(llm_client=None)
-        return HealthAssistantService(repository, llm)
+        return _assistant_service
 
     @router.post("/message", response_model=AssistantReply)
     async def send_message(

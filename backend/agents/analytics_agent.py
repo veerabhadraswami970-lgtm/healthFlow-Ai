@@ -393,21 +393,34 @@ class AnalyticsService:
 
 
 # --------------------------------------------------------------------------
+# Module-level singletons
+# --------------------------------------------------------------------------
+# NOTE: these are created ONCE, at import time, and shared across every
+# request — this is what makes logged events actually visible to later
+# metrics queries. Previously each request built its own throwaway
+# repository via the FastAPI Depends() function below, so every event was
+# saved into a repository instance that was discarded immediately after
+# the request, and every /metrics call queried a *different*, always-empty
+# instance. Swap these two lines out for Mongo-backed equivalents when a
+# real database is wired in.
+_repository: EventRepository = InMemoryEventRepository()
+_narrative_agent = AnalyticsNarrativeAgent(llm_client=None)
+_analytics_service = AnalyticsService(_repository, _narrative_agent)
+
+
+# --------------------------------------------------------------------------
 # FastAPI router (mount under /api/v1)
 # --------------------------------------------------------------------------
 
-def build_router():
+def build_router(get_current_user, require_role):
     from fastapi import APIRouter, Depends
+
+    from backend.routes.users import UserRole
 
     router = APIRouter(prefix="/analytics", tags=["analytics"])
 
     def get_analytics_service() -> AnalyticsService:
-        # Wire real dependencies in your app's dependency module, e.g.
-        # MongoEventRepository(app.state.mongo_db) + GeminiClient built
-        # from settings.
-        repository = InMemoryEventRepository()
-        agent = AnalyticsNarrativeAgent(llm_client=None)
-        return AnalyticsService(repository, agent)
+        return _analytics_service
 
     @router.post("/events", response_model=AnalyticsEvent)
     async def log_event(
@@ -420,9 +433,8 @@ def build_router():
     async def get_metrics(
         req: MetricsRequest,
         service: AnalyticsService = Depends(get_analytics_service),
+        current_user=Depends(require_role(UserRole.ADMIN)),
     ):
-        # NOTE: in your real app, protect this endpoint with an
-        # admin-role dependency — it should not be reachable by patients.
         return await service.get_metrics(req)
 
     return router
