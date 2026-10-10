@@ -1,4 +1,4 @@
-﻿import json
+import json
 import urllib.request
 import urllib.error
 import time
@@ -88,10 +88,16 @@ if patient_id:
     if status in (200, 201):
         check("User ID is hashed, not raw", body.get("user_id_hash") != patient_id)
 
+    a_status, a_body = call("POST", "/users/register", {
+        "full_name": "Agent Test Admin", "email": "admin_" + email,
+        "password": "testpass123", "role": "admin",
+    })
+    admin_token = a_body.get("access_token") if a_status == 201 else None
+
     status, body = call("POST", "/analytics/metrics", {
         "date_from": "2026-01-01T00:00:00Z", "date_to": "2026-12-31T23:59:59Z",
-    }, token=patient_token)
-    check("Get metrics (authenticated)", status == 200, "status=" + str(status) + " " + str(body))
+    }, token=admin_token)
+    check("Get metrics (as admin)", status == 200, "status=" + str(status) + " " + str(body))
 
 print("=" * 60)
 print("Agent check complete.")

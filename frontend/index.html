@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HealthFlow Test Console</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--text:#1c2430;--mute:#6b7685;--line:#dde1e7;--acc:#0b7a75;--ok:#1a7f37;--bad:#b42318;--warn:#9a6700;--code:#f0f2f5}
+@media (prefers-color-scheme:dark){:root{--bg:#10151b;--panel:#171e26;--text:#e6eaf0;--mute:#8e99a8;--line:#2a3441;--acc:#3cc3bb;--ok:#4cc38a;--bad:#ff7b72;--warn:#e3b341;--code:#0d1218}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,sans-serif}
+header{display:flex;gap:12px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:16px;margin:0}
+.pill{padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+main{display:grid;grid-template-columns:260px 1fr 320px;gap:12px;padding:12px;align-items:start}
+@media (max-width:1000px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px}
+.card h2{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
+input,select,textarea,button{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+input,select,textarea{width:100%}
+textarea{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;min-height:150px;resize:vertical}
+button{cursor:pointer}button.primary{background:var(--acc);color:#fff;border-color:var(--acc)}
+button:hover{filter:brightness(.95)}
+label{display:block;font-size:12px;color:var(--mute);margin:6px 0 2px}
+.row{display:flex;gap:6px}.row>*{flex:1}.row>.fix{flex:0 0 auto}
+#eps{max-height:60vh;overflow:auto}
+#eps details summary{cursor:pointer;font-weight:600;padding:3px 0}
+.ep{display:flex;gap:6px;padding:2px 4px;cursor:pointer;border-radius:4px;font-size:12.5px;word-break:break-all}
+.ep:hover{background:var(--code)}
+.m{font-weight:700;font-size:11px;min-width:42px}
+.m.GET{color:var(--ok)}.m.POST{color:var(--acc)}.m.PUT,.m.PATCH{color:var(--warn)}.m.DELETE{color:var(--bad)}
+pre{background:var(--code);border-radius:6px;padding:8px;overflow:auto;max-height:55vh;font-size:12.5px;margin:6px 0 0;white-space:pre-wrap;word-break:break-word}
+.acct{display:flex;justify-content:space-between;gap:6px;align-items:center;padding:3px 0;font-size:12.5px}
+.acct.active{font-weight:700;color:var(--acc)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}td{padding:2px 4px;border-bottom:1px solid var(--line);word-break:break-all}
+.log div{padding:2px 0;font-size:12.5px;border-bottom:1px solid var(--line)}
+.small{font-size:12px;color:var(--mute)}
+</style>
+</head>
+<body>
+<header>
+  <h1>HealthFlow Test Console</h1>
+  <span id="health" class="pill">checking...</span>
+  <span class="small">Base URL</span>
+  <input id="base" style="width:240px" value="">
+  <button id="reload">Reload endpoints</button>
+  <span class="small" id="count"></span>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <h2>Accounts</h2>
+      <label>Full name / Email / Password</label>
+      <input id="a_name" value="Test User">
+      <input id="a_email" placeholder="email (blank = auto)">
+      <input id="a_pass" value="Passw0rd!123">
+      <label>Role</label>
+      <select id="a_role"></select>
+      <div class="row" style="margin-top:8px">
+        <button id="a_reg" class="primary">Register</button>
+        <button id="a_login">Login</button>
+      </div>
+      <div id="accts" style="margin-top:8px"></div>
+      <div class="small">Click an account to use its token. "none" sends no token.</div>
+    </div>
+    <div class="card">
+      <h2>Variables</h2>
+      <div class="small">Use {{name}} in path, query or body. IDs from responses are captured automatically.</div>
+      <table id="vars"></table>
+      <div class="row" style="margin-top:6px">
+        <input id="v_k" placeholder="name"><input id="v_v" placeholder="value">
+        <button class="fix" id="v_set">Set</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Smoke test</h2>
+      <button id="smoke" class="primary">Run smoke test</button>
+      <div class="small">Registers one account per role, then calls every GET endpoint that has no path parameter. Anything but a 5xx counts as alive.</div>
+      <div id="smokelog" class="log"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <h2>Request</h2>
+      <div class="row">
+        <select id="method" class="fix" style="width:100px"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+        <input id="path" placeholder="/api/v1/...">
+        <button id="send" class="primary fix">Send</button>
+      </div>
+      <label>Query string (without ?)</label>
+      <input id="query" placeholder="e.g. is_verified=true">
+      <label>JSON body</label>
+      <textarea id="body" spellcheck="false"></textarea>
+      <div class="small" id="hint"></div>
+    </div>
+    <div class="card">
+      <h2>Response <span id="status" class="pill"></span> <span id="ms" class="small"></span></h2>
+      <pre id="out">Pick an endpoint on the right, or type a path and press Send.</pre>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <h2>Endpoints</h2>
+      <input id="filter" placeholder="filter...">
+      <div id="eps"></div>
+    </div>
+    <div class="card">
+      <h2>History</h2>
+      <div id="hist" class="log"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+var $ = function (id) { return document.getElementById(id); };
+var state = { spec: null, accounts: [], active: -1, vars: {}, ops: [] };
+var API = "/api/v1";
+var STORE = "hf_console_v1";
+
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify({ accounts: state.accounts, active: state.active, vars: state.vars, base: $("base").value })); } catch (e) {}
+}
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE) || "{}");
+    state.accounts = s.accounts || []; state.active = (typeof s.active === "number") ? s.active : -1; state.vars = s.vars || {};
+    if (s.base) $("base").value = s.base;
+  } catch (e) {}
+  if (!$("base").value) $("base").value = (location.protocol === "http:" || location.protocol === "https:") ? location.origin : "http://127.0.0.1:8000";
+}
+function base() { return $("base").value.replace(/\/+$/, ""); }
+function token() { var a = state.accounts[state.active]; return a ? a.token : null; }
+
+/* ---------- variables ---------- */
+function subst(s) {
+  return String(s).replace(/\{\{\s*([\w.-]+)\s*\}\}/g, function (m, k) { return (k in state.vars) ? state.vars[k] : m; });
+}
+function renderVars() {
+  var t = $("vars"); t.innerHTML = "";
+  Object.keys(state.vars).forEach(function (k) {
+    var tr = document.createElement("tr");
+    var a = document.createElement("td"); a.textContent = k;
+    var b = document.createElement("td"); b.textContent = state.vars[k];
+    var c = document.createElement("td"); var x = document.createElement("button"); x.textContent = "x";
+    x.onclick = function () { delete state.vars[k]; renderVars(); save(); };
+    c.appendChild(x); tr.appendChild(a); tr.appendChild(b); tr.appendChild(c); t.appendChild(tr);
+  });
+}
+function setVar(k, v) { state.vars[k] = String(v); renderVars(); save(); }
+function capture(data, op) {
+  if (!data || typeof data !== "object") return;
+  var tag = ((op && op.tag) || "item").replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+  var obj = Array.isArray(data) ? data[0] : data;
+  if (!obj || typeof obj !== "object") return;
+  if (obj.user && obj.user.id) setVar("user_id", obj.user.id);
+  if (obj.id) { setVar("last_id", obj.id); setVar(tag + "_id", obj.id); }
+  Object.keys(obj).forEach(function (k) {
+    if (/_id$/.test(k) && typeof obj[k] === "string") setVar(k, obj[k]);
+  });
+}
+
+/* ---------- accounts ---------- */
+function renderAccts() {
+  var d = $("accts"); d.innerHTML = "";
+  var none = document.createElement("div"); none.className = "acct" + (state.active < 0 ? " active" : "");
+  none.textContent = "none (no token)"; none.style.cursor = "pointer";
+  none.onclick = function () { state.active = -1; renderAccts(); save(); };
+  d.appendChild(none);
+  state.accounts.forEach(function (a, i) {
+    var r = document.createElement("div"); r.className = "acct" + (i === state.active ? " active" : "");
+    var l = document.createElement("span"); l.style.cursor = "pointer"; l.textContent = a.role + " - " + a.email;
+    l.onclick = function () { state.active = i; renderAccts(); save(); };
+    var x = document.createElement("button"); x.textContent = "x";
+    x.onclick = function () { state.accounts.splice(i, 1); if (state.active >= state.accounts.length) state.active = state.accounts.length - 1; renderAccts(); save(); };
+    r.appendChild(l); r.appendChild(x); d.appendChild(r);
+  });
+}
+function rid() { return Math.random().toString(36).slice(2, 8); }
+async function raw(method, path, body, tok) {
+  var h = {}; if (body !== undefined) h["Content-Type"] = "application/json";
+  if (tok) h["Authorization"] = "Bearer " + tok;
+  var t0 = performance.now(), res, text, data = null;
+  res = await fetch(base() + path, { method: method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) });
+  text = await res.text();
+  try { data = JSON.parse(text); } catch (e) {}
+  return { status: res.status, ok: res.ok, data: data, text: text, ms: Math.round(performance.now() - t0) };
+}
+async function register(role, email, pass, name) {
+  email = email || (role + "_" + rid() + "@example.com");
+  var r = await raw("POST", API + "/users/register", { full_name: name || ("Test " + role), email: email, password: pass, role: role });
+  if (!r.ok) return r;
+  var tok = r.data && r.data.access_token;
+  if (!tok) { var l = await raw("POST", API + "/users/login", { email: email, password: pass }); tok = l.data && l.data.access_token; }
+  state.accounts.push({ role: role, email: email, password: pass, token: tok, user_id: r.data && r.data.user && r.data.user.id });
+  state.active = state.accounts.length - 1;
+  if (r.data && r.data.user) setVar(role + "_user_id", r.data.user.id);
+  renderAccts(); save();
+  return r;
+}
+$("a_reg").onclick = async function () {
+  var r = await register($("a_role").value, $("a_email").value.trim(), $("a_pass").value, $("a_name").value);
+  show(r, "register"); 
+};
+$("a_login").onclick = async function () {
+  var email = $("a_email").value.trim();
+  if (!email) { var a = state.accounts[state.active]; if (a) email = a.email; }
+  var r = await raw("POST", API + "/users/login", { email: email, password: $("a_pass").value });
+  if (r.ok && r.data && r.data.access_token) {
+    var role = $("a_role").value;
+    var ex = state.accounts.findIndex(function (x) { return x.email === email; });
+    var acc = { role: ex >= 0 ? state.accounts[ex].role : role, email: email, password: $("a_pass").value, token: r.data.access_token };
+    if (ex >= 0) { state.accounts[ex] = acc; state.active = ex; } else { state.accounts.push(acc); state.active = state.accounts.length - 1; }
+    renderAccts(); save();
+  }
+  show(r, "login");
+};
+
+/* ---------- request console ---------- */
+function show(r, label) {
+  $("status").textContent = r.status; $("status").className = "pill " + (r.status < 400 ? "ok" : (r.status < 500 ? "warn" : "bad"));
+  $("ms").textContent = r.ms + " ms";
+  $("out").textContent = r.data ? JSON.stringify(r.data, null, 2) : (r.text || "(empty)");
+  var d = document.createElement("div"); d.textContent = r.status + "  " + label;
+  d.className = r.status < 400 ? "ok" : (r.status < 500 ? "warn" : "bad");
+  var h = $("hist"); h.insertBefore(d, h.firstChild); while (h.children.length > 30) h.removeChild(h.lastChild);
+}
+async function send() {
+  var method = $("method").value, path = subst($("path").value.trim()), q = subst($("query").value.trim());
+  var bodyTxt = subst($("body").value.trim()), body;
+  if (!path) return;
+  if (path.charAt(0) !== "/") path = "/" + path;
+  if (q) path += (path.indexOf("?") >= 0 ? "&" : "?") + q;
+  if (bodyTxt && method !== "GET") {
+    try { body = JSON.parse(bodyTxt); } catch (e) { show({ status: 0, data: null, text: "Body is not valid JSON: " + e.message, ms: 0 }, "bad body"); return; }
+  }
+  if (/\{\{/.test(path)) { show({ status: 0, data: null, text: "Unfilled placeholder in path: " + path + "\nSet it under Variables.", ms: 0 }, "placeholder"); return; }
+  $("send").disabled = true;
+  try {
+    var r = await raw(method, path, body, token());
+    var op = state.ops.find(function (o) { return o.method === method && o.template === $("path").value.trim(); });
+    if (r.ok) capture(r.data, op);
+    show(r, method + " " + path);
+  } catch (e) {
+    show({ status: 0, data: null, text: "Network error: " + e.message + "\nIs the backend running at " + base() + " ?", ms: 0 }, "network error");
+  }
+  $("send").disabled = false;
+}
+$("send").onclick = send;
+
+/* ---------- OpenAPI -> endpoint list ---------- */
+function deref(s) {
+  var seen = 0;
+  while (s && s.$ref && seen++ < 10) {
+    var parts = s.$ref.replace(/^#\//, "").split("/"); var n = state.spec;
+    parts.forEach(function (p) { n = n && n[p]; }); s = n;
+  }
+  return s || {};
+}
+function sample(s, depth) {
+  s = deref(s); depth = depth || 0; if (depth > 4) return null;
+  if (s.example !== undefined) return s.example;
+  if (s.default !== undefined) return s.default;
+  if (s.enum) return s.enum[0];
+  if (s.anyOf || s.oneOf) {
+    var alts = (s.anyOf || s.oneOf).filter(function (x) { return deref(x).type !== "null"; });
+    return alts.length ? sample(alts[0], depth + 1) : null;
+  }
+  if (s.allOf) { var o = {}; s.allOf.forEach(function (x) { Object.assign(o, sample(x, depth + 1)); }); return o; }
+  switch (s.type) {
+    case "object":
+      var out = {}, req = s.required || [];
+      Object.keys(s.properties || {}).forEach(function (k) { if (req.indexOf(k) >= 0) out[k] = sample(s.properties[k], depth + 1); });
+      return out;
+    case "array": return s.items ? [sample(s.items, depth + 1)] : [];
+    case "integer": return s.minimum !== undefined ? s.minimum : 0;
+    case "number": return s.minimum !== undefined ? s.minimum : 0;
+    case "boolean": return false;
+    case "string":
+      if (s.format === "date") return "2026-10-12";
+      if (s.format === "date-time") return "2026-10-12T10:00:00Z";
+      if (s.format === "email") return "user@example.com";
+      return "string";
+  }
+  return null;
+}
+/* hand-tuned bodies for flows that need realistic values */
+var PRESETS = {
+  "POST /users/register": { full_name: "Test User", email: "test_{{rand}}@example.com", password: "Passw0rd!123", role: "patient" },
+  "POST /users/login": { email: "test@example.com", password: "Passw0rd!123" },
+  "POST /doctors/": { specialties: ["cardiology"], experience_years: 5 },
+  "POST /appointments/": { doctor_id: "{{doctors_id}}", date: "2026-10-20", start_time: "10:00", end_time: "10:30", consultation_type: "in_person", reason: "checkup" },
+  "POST /health-records/": { record_type: "lab_report", title: "CBC report", storage_ref: "gs://bucket/cbc.pdf" },
+  "POST /blood-banks/": { name: "City Blood Bank", address: "MG Road", latitude: 12.97, longitude: 77.59 },
+  "POST /prescriptions/scan": { patient_id: "{{user_id}}", image_storage_ref: "gs://bucket/rx.jpg" },
+  "POST /qr-sharing/tokens": { prescription_id: "{{prescriptions_id}}", patient_id: "{{user_id}}" },
+  "POST /assistant/message": { user_id: "{{user_id}}", text: "I have a mild headache", language: "en" },
+  "POST /schemes/check-eligibility": { age: 45, state: "Karnataka", annual_income: 200000 },
+  "POST /recommendations/": { patient_id: "{{user_id}}", intent: "find_doctor", candidate_type: "doctor", specialty_or_category: "cardiology" },
+  "POST /analytics/events": { event_type: "app_open", user_id: "{{user_id}}", metadata: {} },
+  "POST /analytics/metrics": { date_from: "2026-01-01T00:00:00Z", date_to: "2026-12-31T23:59:59Z" }
+};
+function stripPrefix(p) { return p.indexOf(API) === 0 ? p.slice(API.length) : p; }
+function buildOps() {
+  var ops = [], paths = state.spec.paths || {};
+  Object.keys(paths).forEach(function (p) {
+    Object.keys(paths[p]).forEach(function (m) {
+      if (["get", "post", "put", "patch", "delete"].indexOf(m) < 0) return;
+      var d = paths[p][m], METHOD = m.toUpperCase();
+      var tmpl = p.replace(/\{([^}]+)\}/g, "{{$1}}");
+      var query = [], hasPathParam = /\{/.test(p);
+      (d.parameters || []).forEach(function (pr) {
+        pr = deref(pr);
+        if (pr.in === "query") { var sv = sample(pr.schema || {}); query.push({ name: pr.name, required: !!pr.required, value: sv }); }
+      });
+      var body = null;
+      var rb = d.requestBody && d.requestBody.content && d.requestBody.content["application/json"];
+      if (rb && rb.schema) body = sample(rb.schema);
+      var key = METHOD + " " + stripPrefix(p);
+      if (PRESETS[key]) body = PRESETS[key];
+      ops.push({ method: METHOD, path: p, template: tmpl, tag: (d.tags && d.tags[0]) || "other", summary: d.summary || "", query: query, body: body, hasPathParam: hasPathParam });
+    });
+  });
+  state.ops = ops;
+}
+function fill(op) {
+  $("method").value = op.method; $("path").value = op.template;
+  $("query").value = op.query.filter(function (q) { return q.required; }).map(function (q) { return q.name + "=" + encodeURIComponent(q.value === null ? "" : q.value); }).join("&");
+  var b = op.body === null ? "" : JSON.stringify(op.body, null, 2);
+  $("body").value = b.replace(/\{\{rand\}\}/g, rid());
+  var opt = op.query.filter(function (q) { return !q.required; }).map(function (q) { return q.name; });
+  $("hint").textContent = (op.summary ? op.summary + ". " : "") + (opt.length ? "Optional query: " + opt.join(", ") : "");
+}
+function renderOps() {
+  var f = $("filter").value.toLowerCase(), box = $("eps"); box.innerHTML = "";
+  var groups = {};
+  state.ops.forEach(function (o) {
+    if (f && (o.method + " " + o.path).toLowerCase().indexOf(f) < 0) return;
+    (groups[o.tag] = groups[o.tag] || []).push(o);
+  });
+  Object.keys(groups).sort().forEach(function (g) {
+    var det = document.createElement("details"); if (f) det.open = true;
+    var sm = document.createElement("summary"); sm.textContent = g + " (" + groups[g].length + ")"; det.appendChild(sm);
+    groups[g].forEach(function (o) {
+      var r = document.createElement("div"); r.className = "ep";
+      var m = document.createElement("span"); m.className = "m " + o.method; m.textContent = o.method;
+      var t = document.createElement("span"); t.textContent = stripPrefix(o.template);
+      r.appendChild(m); r.appendChild(t); r.onclick = function () { fill(o); }; det.appendChild(r);
+    });
+    box.appendChild(det);
+  });
+  $("count").textContent = state.ops.length + " endpoints";
+}
+$("filter").oninput = renderOps;
+
+async function loadSpec() {
+  try {
+    var h = await raw("GET", "/health");
+    $("health").textContent = h.ok ? "backend up" : ("health " + h.status); $("health").className = "pill " + (h.ok ? "ok" : "bad");
+  } catch (e) { $("health").textContent = "backend unreachable"; $("health").className = "pill bad"; }
+  try {
+    var r = await raw("GET", "/openapi.json");
+    if (!r.ok) throw new Error("status " + r.status);
+    state.spec = r.data; buildOps(); renderOps();
+    var us = (state.spec.components && state.spec.components.schemas && state.spec.components.schemas.UserCreate);
+    var roles = ["patient", "doctor", "hospital_admin", "admin"];
+    if (us && us.properties && us.properties.role) { var rs = deref(us.properties.role); if (rs.enum) roles = rs.enum; }
+    var sel = $("a_role"); sel.innerHTML = "";
+    roles.forEach(function (x) { var o = document.createElement("option"); o.textContent = x; sel.appendChild(o); });
+    state.roles = roles;
+  } catch (e) { $("eps").textContent = "Could not load /openapi.json: " + e.message; }
+}
+$("reload").onclick = function () { save(); loadSpec(); };
+$("v_set").onclick = function () { if ($("v_k").value) { setVar($("v_k").value, $("v_v").value); $("v_k").value = ""; $("v_v").value = ""; } };
+
+/* ---------- smoke test ---------- */
+function slog(txt, cls) { var d = document.createElement("div"); d.textContent = txt; d.className = cls || ""; $("smokelog").appendChild(d); }
+$("smoke").onclick = async function () {
+  $("smokelog").innerHTML = ""; $("smoke").disabled = true;
+  var pass = 0, fail = 0;
+  try {
+    var h = await raw("GET", "/health"); slog(h.status + " GET /health", h.ok ? "ok" : "bad"); h.ok ? pass++ : fail++;
+    var roles = state.roles || ["patient", "doctor", "hospital_admin", "admin"];
+    for (var i = 0; i < roles.length; i++) {
+      var r = await register(roles[i], "", "Passw0rd!123", "Smoke " + roles[i]);
+      slog(r.status + " register " + roles[i], r.ok ? "ok" : "bad"); r.ok ? pass++ : fail++;
+    }
+    var p = state.accounts.slice().reverse().find(function (a) { return a.role === "patient"; });
+    if (p) { state.active = state.accounts.indexOf(p); renderAccts(); setVar("user_id", p.user_id || state.vars.user_id || ""); }
+    var gets = state.ops.filter(function (o) { return o.method === "GET" && !o.hasPathParam; });
+    for (var j = 0; j < gets.length; j++) {
+      var o = gets[j];
+      var qs = o.query.filter(function (q) { return q.required; }).map(function (q) { return q.name + "=" + encodeURIComponent(q.value === null ? "" : q.value); }).join("&");
+      var rr = await raw("GET", o.path + (qs ? "?" + qs : ""), undefined, token());
+      var good = rr.status > 0 && rr.status < 500; good ? pass++ : fail++;
+      slog(rr.status + " GET " + stripPrefix(o.path), rr.status < 400 ? "ok" : (good ? "warn" : "bad"));
+    }
+  } catch (e) { slog("Aborted: " + e.message, "bad"); fail++; }
+  slog("Done: " + pass + " alive, " + fail + " failed", fail ? "bad" : "ok");
+  $("smoke").disabled = false;
+};
+
+load(); renderAccts(); renderVars(); loadSpec();
+</script>
+</body>
+</html>

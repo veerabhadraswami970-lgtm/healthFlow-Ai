@@ -6,7 +6,10 @@ Run it with:
     uvicorn backend.main:app --reload
 Then open http://127.0.0.1:8000/docs for an interactive UI.
 """
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from backend.routes.users import build_router as build_users_router
 from backend.routes.doctors import build_router as build_doctors_router
 from backend.routes.hospitals import build_router as build_hospitals_router
@@ -49,3 +52,8 @@ app.include_router(build_recommendation_router(), prefix="/api/v1")
 app.include_router(build_assistant_router(), prefix="/api/v1")
 app.include_router(build_voice_router(), prefix="/api/v1")
 app.include_router(build_analytics_router(get_current_user, require_role), prefix="/api/v1")
+
+# Test frontend: served at http://127.0.0.1:8000/app/ (same origin, so no CORS needed)
+_FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+if _FRONTEND_DIR.is_dir():
+    app.mount("/app", StaticFiles(directory=str(_FRONTEND_DIR), html=True), name="frontend")
