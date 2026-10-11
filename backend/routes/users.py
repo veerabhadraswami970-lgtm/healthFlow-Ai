@@ -35,6 +35,7 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8)
     full_name: str
     role: UserRole = UserRole.PATIENT
+    admin_key: Optional[str] = None  # only needed to create an admin account
 
 
 class UserLogin(BaseModel):
@@ -172,6 +173,12 @@ class AuthService:
         existing = await self._repo.get_by_email(req.email)
         if existing is not None:
             raise AuthError("An account with this email already exists.")
+
+        if req.role == UserRole.ADMIN:
+            expected_key = os.environ.get("ADMIN_SIGNUP_KEY", "")
+            given_key = req.admin_key or ""
+            if not expected_key or not hmac.compare_digest(given_key, expected_key):
+                raise AuthError("Admin accounts cannot be created through public sign-up.")
 
         user = UserInDB(
             id=str(uuid.uuid4()),

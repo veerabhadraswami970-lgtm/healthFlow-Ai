@@ -1,4 +1,4 @@
-import json, time, urllib.request, urllib.error
+import json, os, time, urllib.request, urllib.error
 
 BASE = "http://127.0.0.1:8000/api/v1"
 
@@ -43,7 +43,8 @@ ids = {}
 for role in ("patient", "doctor", "admin"):
     r = step("register " + role, "POST", "/users/register", {
         "full_name": "Flow " + role, "email": role + "_" + stamp + "@test.com",
-        "password": "testpass123", "role": role})
+        "password": "testpass123", "role": role,
+        "admin_key": os.environ.get("ADMIN_SIGNUP_KEY")})
     tokens[role] = r.get("access_token")
     ids[role] = (r.get("user") or {}).get("id")
 

@@ -2,6 +2,7 @@ import json
 import urllib.request
 import urllib.error
 import time
+import os
 
 BASE = "http://127.0.0.1:8000/api/v1"
 
@@ -91,6 +92,7 @@ if patient_id:
     a_status, a_body = call("POST", "/users/register", {
         "full_name": "Agent Test Admin", "email": "admin_" + email,
         "password": "testpass123", "role": "admin",
+        "admin_key": os.environ.get("ADMIN_SIGNUP_KEY"),
     })
     admin_token = a_body.get("access_token") if a_status == 201 else None
 
