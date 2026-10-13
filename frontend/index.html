@@ -55,6 +55,7 @@ table{width:100%;border-collapse:collapse;font-size:12.5px}td{padding:2px 4px;bo
       <input id="a_name" value="Test User">
       <input id="a_email" placeholder="email (blank = auto)">
       <input id="a_pass" value="Passw0rd!123">
+      <input id="a_key" placeholder="admin key (only for admin role)">
       <label>Role</label>
       <select id="a_role"></select>
       <div class="row" style="margin-top:8px">
@@ -191,7 +192,7 @@ async function raw(method, path, body, tok) {
 }
 async function register(role, email, pass, name) {
   email = email || (role + "_" + rid() + "@example.com");
-  var r = await raw("POST", API + "/users/register", { full_name: name || ("Test " + role), email: email, password: pass, role: role });
+  var r = await raw("POST", API + "/users/register", { full_name: name || ("Test " + role), email: email, password: pass, role: role, admin_key: ($("a_key").value || undefined) });
   if (!r.ok) return r;
   var tok = r.data && r.data.access_token;
   if (!tok) { var l = await raw("POST", API + "/users/login", { email: email, password: pass }); tok = l.data && l.data.access_token; }
